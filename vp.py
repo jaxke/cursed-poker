@@ -2,6 +2,7 @@ import curses
 import math
 from random import randrange
 import CardDrawer
+import time
 
 stdscr = curses.initscr()
 curses.noecho()
@@ -11,6 +12,7 @@ curses.cbreak()
 #curses.echo()
 
 suites = ["clubs", "diamonds", "hearts", "spades"]
+card_names = ["Ace", "2", "3", "4", "5", "6", "7", "8", "9", "10", "Jack", "Queen", "King"]
 dims = [15, 12]
 
 '''
@@ -32,12 +34,20 @@ dims = [15, 12]
     royal flush:        "flush" and ace high
 
 '''
+
+'''
+    hand: [[1, 'diamonds'], [1, 'spades'], [3, 'clubs'], [4, 'hearts'], [4, 'diamonds']]
+'''
+
 def rank_hand(hand):
     high = 0
     hand_ranking = {}
     cards_having_rank = []
 
     for card in hand:
+        if int(card[0]) == 1:
+            high = 1
+            break
         if int(card[0]) > high:
             high = int(card[0])
 
@@ -55,25 +65,48 @@ def rank_hand(hand):
             elif occurences_of_val == 4:
                 hand_ranking[val] = "four of a kind"
 
+    suites = [card[1] for card in hand]
+    if suites.count(suites[0]) == len(hand):
+        hand_ranking = {high: "flush"}
+        if high == 1:
+            return "royal flush"
+    
+    if "three of a kind" in list(hand_ranking.values()) and ("low pair" in list(hand_ranking.values()) or "jacks or better" in list(hand_ranking.values())):
+        return "full house"
+    elif list(hand_ranking.values()).count("low pair") + list(hand_ranking.values()).count("jacks or better") == 2:
+        return "two pairs"
+    elif "low pair" in list(hand_ranking.values()):
+        return "low pair"    
+    elif "jacks or better" in list(hand_ranking.values()):
+        return "jacks or better"
+    elif "three of a kind" in list(hand_ranking.values()):
+        return "three of a kind"
+
     for i in range(1, len(vals)):
         #import pdb; pdb.set_trace()
         if not vals[i]-1 == vals[i-1]:
             break
         if i == len(vals)-1:
-            hand_ranking[val] = "straight"
-
-    if "three of a kind" in hand_ranking and ("low_pair" in hand_ranking or "jacks or better" in hand_ranking):
-        hand_ranking = {0: "full house"}
+            if "flush" in list(hand_ranking.values()):
+                return "straigh flush"
+            else:
+                return "straight"
+    
+    if "flush" in list(hand_ranking.values()):
+        return "flush"
+    elif "four of a kind" in list(hand_ranking.values()):
+        return "four of a kind"
     
     if not hand_ranking:
-        hand_ranking[high] = "high"
-
-    return hand_ranking
+        return card_names[high-1] + " high"
 
 
 
 def print_hand(hand, scr):
-    hand_display = CardDrawer.CardDrawer().get_hand(hand, dims)
+    if not hand:
+        hand_display = CardDrawer.CardDrawer().get_hand_of_empty_cards(dims)
+    else:
+        hand_display = CardDrawer.CardDrawer().get_hand(hand, dims)
     scr.addstr(0, 0, hand_display, curses.A_REVERSE)
     scr.refresh()
 
@@ -82,11 +115,17 @@ def print_hand(hand, scr):
 def draw_cards(n):
     cards = []
     if False:  #DEBUG
-        return [[1, "diamonds"], [1, "spades"], [3, "clubs"], [4, "hearts"], [4, "diamonds"]]
-    for i in range(n):
+        return [[1, "diamonds"], [3, "clubs"], [6, "diamonds"], [4, "diamonds"], [5, "diamonds"]]
+    
+    # Can't do it in for loop because we can't reset the loop without incrementing the iterator
+    i = 0
+    while i < n:
         suite = suites[randrange(3)]
         value = randrange(1, 14)
+        if value in cards:
+            continue
         cards.append([value, suite])
+        i += 1
     return cards
 
 
@@ -101,13 +140,29 @@ def update_held(held, scr):
     stdscr.addstr(dims[1], 0, holdstr, curses.A_REVERSE)
     scr.refresh()
 
+def shuffle(hand, scr):
+    # "Shuffle animation" 4 times
+    for i in range(4):
+        random_hand = []
+        # 5 cards per hand
+        for j in range(5):
+            random_hand.append([randrange(14), suites[randrange(4)]])
+        print_hand(random_hand, scr)
+        time.sleep(0.2)
+        print_hand(None, stdscr)
+        time.sleep(0.2)
+    print_hand(hand, scr)
+            
 
 
 def main():
+    print_hand(None, stdscr)
+    c = stdscr.getch()
     cards = draw_cards(5)
+    shuffle(cards, stdscr)
     print_hand(cards, stdscr)
     ranked = rank_hand(cards)
-    stdscr.addstr(dims[0], 0, " ".join(list(ranked.values())), curses.A_REVERSE)
+    stdscr.addstr(dims[0], 0, ranked, curses.A_REVERSE)
     stdscr.refresh()
     held = []
     while True:
@@ -145,21 +200,58 @@ def main():
 
             update_held(held, stdscr)
 
+        # Space bar is "Deal"
         if c == ord(' '):
+            tmp_hand = []
             drawn_cards = draw_cards(5 - len(held))
-            for i in range(len(cards)-1):
+            for i in range(len(cards)):
                 if i not in held:
+                    tmp_hand.append([0,0])
                     cards[i] = drawn_cards[-1]
                     drawn_cards.pop(-1)
+                else:
+                    tmp_hand.append(cards[i])
+
+            print_hand(tmp_hand, stdscr)
+            stdscr.refresh()
+            for i in range(len(tmp_hand)):
+                if tmp_hand[i] == [0,0]:
+                    for j in range(2):
+                        tmp_hand[i] = [randrange(14), suites[randrange(4)]]
+                        print_hand(tmp_hand, stdscr)
+                        time.sleep(0.2)
+                        tmp_hand[i] = [0,0]
+                        print_hand(tmp_hand, stdscr)
+                        time.sleep(0.2)
+                    tmp_hand[i] = cards[i]
+                    print_hand(tmp_hand, stdscr)
+                    time.sleep(0.2)
+                    
 
             print_hand(cards, stdscr)
             ranked = rank_hand(cards)
             stdscr.move(2, 0)
-            stdscr.clrtoeol()
-            stdscr.addstr(dims[0], 0, " ".join(list(ranked.values())), curses.A_REVERSE)
+            stdscr.addstr(dims[0], 0, ranked, curses.A_REVERSE)
+            stdscr.refresh()
             update_held(None, stdscr)
 
-            if 
+            if ranked == "low pair" or "high" in ranked:
+                stdscr.addstr(dims[0], 0, "You've lost", curses.A_REVERSE)
+            elif ranked == "jacks or better":
+                stdscr.addstr(dims[0], 0, "You've got a pair of jacks or better. Draw.", curses.A_REVERSE)
+            else:
+                stdscr.addstr(dims[0], 0, "You've got: " + ranked + ". You win.", curses.A_REVERSE)
+            
+            c = stdscr.getch()
+            if c == ord(' '):
+                cards = draw_cards(5)
+                print_hand(cards, stdscr)
+                ranked = rank_hand(cards)
+                stdscr.addstr(dims[0], 0, " "*100, curses.A_REVERSE)
+                stdscr.refresh()
+                held = []
+                shuffle(cards, stdscr)
+                stdscr.addstr(dims[0], 0, ranked, curses.A_REVERSE)
 
         if c == ord('q'):
             break

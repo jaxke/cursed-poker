@@ -3,6 +3,7 @@ import math
 
 class CardDrawer(object):
     symbols = {"vbar": "║", "hbar": "═", "1": "╔", "2": "╗", "3": "╝", "4": "╚", "clubs": "♣", "diamonds": "♦", "hearts": "♥", "spades": "♠"}
+    empty_hand = [[0,0], [0,0], [0,0], [0,0], [0,0]]
 
     # 13, 9
     def get_hand(self, cards, dims):
@@ -10,6 +11,9 @@ class CardDrawer(object):
         for card in cards:
             card_visual_representations.append(self.get_card_repr(card[0], card[1], dims))
         return self.get_side_by_side_representation(card_visual_representations, dims)
+
+    def get_hand_of_empty_cards(self, dims):
+        return self.get_hand(self.empty_hand, dims)
 
     def get_card_repr(self, value, suite, dims):
         if value == 1:
@@ -31,6 +35,24 @@ class CardDrawer(object):
                 cardstr += self.symbols["2"]
                 cardstr += "\n"
                 continue
+
+            elif i == dims[1]-1:
+                cardstr += self.symbols["4"]
+                cardstr += self.symbols["hbar"]* (dims[0]-2)
+                cardstr += self.symbols["3"]
+                cardstr += "\n"
+                continue
+
+            elif value == "0":
+                width = 0
+                cardstr += self.symbols["vbar"]
+                cardstr += " " * (math.floor(dims[0]/3) -1)
+                cardstr += "*"
+                cardstr += " " * (math.floor(dims[0]/3) -1) 
+                cardstr += "*"
+                cardstr += " " * (math.floor(dims[0]/3) -2)
+                cardstr += self.symbols["vbar"]
+                cardstr += "\n"
                 
             elif i == math.floor(dims[1]/2) - 1 or i == math.floor(dims[1]/2 + 1):
                 cardstr += self.symbols["vbar"]
@@ -52,13 +74,6 @@ class CardDrawer(object):
                 cardstr += self.symbols["vbar"]
                 cardstr += "\n"
                 continue
-
-            elif i == dims[1]-1:
-                cardstr += self.symbols["4"]
-                cardstr += self.symbols["hbar"]* (dims[0]-2)
-                cardstr += self.symbols["3"]
-                cardstr += "\n"
-                continue
             else:
                 cardstr += self.symbols["vbar"]
                 cardstr += " " * (dims[0] - 2)
@@ -77,6 +92,6 @@ class CardDrawer(object):
 if __name__ == "__main__":
     testhand = [[10, "spades"], [11, "spades"], [6, "hearts"], [1, "clubs"], [4, "spades"]]
     cd = CardDrawer()
-    print(cd.get_hand(testhand))
+    print(cd.get_hand_of_empty_cards([15, 12]))
 
 
