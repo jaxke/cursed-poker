@@ -140,14 +140,14 @@ class Main:
 
 
     def update_held(self, held):
-        self.scr.addstr(self.ylocation_hold, 0, " "* 5*(self.dims[0]+4), curses.A_REVERSE)
+        self.scr.addstr(self.ylocation_hold, 0, " "* 5*(self.dims[0]+4), curses.A_STANDOUT)
         holdstr = ""
         for i in range(0, 5):
             if held and i in held:
                 holdstr += "HOLD" + " "*self.dims[0]
             else:
                 holdstr += " " *(self.dims[0]+4)  
-        self.scr.addstr(self.ylocation_hold, 0, holdstr, curses.A_REVERSE)
+        self.scr.addstr(self.ylocation_hold, 0, holdstr, curses.A_STANDOUT)
         self.scr.refresh()
 
 
@@ -281,8 +281,6 @@ class Main:
                     
                     self.print_hand(cards)
                     ranked = self.rank_hand(cards)
-                    self.scr.addstr(self.dims[0], 0, " "*100, curses.A_REVERSE)
-                    self.scr.refresh()
                     held = []
                     self.shuffle(cards)
                     self.scoreboard.draw_to_scr(ranked)
