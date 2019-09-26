@@ -2,8 +2,11 @@ import curses
 import math
 from random import randrange
 import CardDrawer
+import ScoreBoard
 import time
 
+
+# TODO for safety, add these curses calls to __main__
 stdscr = curses.initscr()
 curses.noecho()
 curses.cbreak()
@@ -104,12 +107,12 @@ def rank_hand(hand):
 
 
 
-def print_hand(hand, scr):
+def print_hand(hand, scr, ylocation):
     if not hand:
         hand_display = CardDrawer.CardDrawer().get_hand_of_empty_cards(dims)
     else:
         hand_display = CardDrawer.CardDrawer().get_hand(hand, dims)
-    scr.addstr(0, 0, hand_display, curses.A_REVERSE)
+    scr.addstr(ylocation, 0, hand_display, curses.A_REVERSE)
     scr.refresh()
 
 
@@ -144,16 +147,18 @@ def update_held(held, scr):
     stdscr.addstr(dims[1], 0, holdstr, curses.A_REVERSE)
     scr.refresh()
 
-def shuffle(hand, scr):
+
+# TODO This program NEEDS a main class to get rid of passing semi-irrelevant vars
+def shuffle(hand, scr, scoreboard_height):
     # "Shuffle animation" 4 times
     for i in range(4):
         random_hand = []
         # 5 cards per hand
         for j in range(5):
             random_hand.append([randrange(14), suites[randrange(4)]])
-        print_hand(random_hand, scr)
+        print_hand(random_hand, scr, scoreboard_height)
         time.sleep(0.2)
-        print_hand(None, scr)
+        print_hand(None, scr, scoreboard_height)
         if i != 3:
             time.sleep(0.2)
     
@@ -164,21 +169,32 @@ def shuffle(hand, scr):
             time.sleep(0.85)
         else:
             time.sleep(0.35)
-        print_hand(tmp_hand, stdscr)
-    print_hand(hand, scr)
+        print_hand(tmp_hand, stdscr, scoreboard_height)
+    print_hand(hand, scr, scoreboard_height)
             
-
+# TODO add "deal" function to remove repetition, it should function in both re-deal and drawing new cards to hand
 
 def main():
-    print_hand(None, stdscr)
-    c = stdscr.getch()
+    scoreboard = ScoreBoard.ScoreBoard(dims, stdscr)
+    scoreboard_height = scoreboard.get_scoreboard_height()
+    
     cards = draw_cards(5, None)
-    shuffle(cards, stdscr)
-    print_hand(cards, stdscr)
     ranked = rank_hand(cards)
-    stdscr.addstr(dims[0], 0, ranked, curses.A_REVERSE)
-    stdscr.refresh()
+    # Even if we've got the cards already, don't reveal the rank yet
+    scoreboard.draw_to_scr(None)
+    print_hand(None, stdscr, scoreboard_height)
+
+    # Wait for the user input before dealing
+    c = stdscr.getch()
+    shuffle(cards, stdscr, scoreboard_height)
+
+    scoreboard.draw_to_scr(ranked)
+    print_hand(cards, stdscr, scoreboard_height)
+    """ stdscr.addstr(dims[0], 0, ranked, curses.A_REVERSE)
+    stdscr.refresh() """
     held = []
+
+    c = stdscr.getch()
     while True:
         c = stdscr.getch()
         if c >= 49 and c <= 53 or c in [97, 115, 100, 102, 103]:

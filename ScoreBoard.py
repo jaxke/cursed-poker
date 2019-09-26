@@ -1,4 +1,5 @@
 
+import curses
 
 class ScoreBoard:
     symbols = {"vbar": "║", "hbar": "═", "1": "╔", "2": "╗", "3": "╝", "4": "╚"}
@@ -11,6 +12,7 @@ class ScoreBoard:
     board_width = 0
     # This is the reward that player gets per above winning hands (initial bet*scaling)
     scaling = [1, 2, 3, 4, 6, 9, 25, 50, 250]
+    board_skeleton = ""
 
     def __init__(self, dims, scr):
         self.cell_width = max([len(hand) for hand in self.winning_hands])+1
@@ -19,10 +21,14 @@ class ScoreBoard:
         self.scr = scr
         # cell width * number of columns + 2 vbars + number of columns-1 (the separator of each tier)
         self.board_width = (len(self.tiers)+1)*self.cell_width + 2 + len(self.tiers)-2
+        self.board_skeleton = self.get_scoreboard_sceleton()
+
+    def get_scoreboard_height(self):
+        return 2 + len(self.winning_hands)
 
     def get_scoreboard_sceleton(self):
         sclt = self.symbols["1"] + self.symbols["hbar"]*(self.board_width) + self.symbols["2"] + "\n"
-        for i in range(len(self.winning_hands)):
+        for i in reversed(range(len(self.winning_hands))):
             sclt += self.symbols["vbar"] + self.winning_hands[i] + " "*self.get_empty_space_after_entry(self.winning_hands[i]) + self.symbols["vbar"]
             for tier in self.tiers:
                 reward = str(tier * self.scaling[i])
@@ -34,6 +40,27 @@ class ScoreBoard:
     def get_empty_space_after_entry(self, entry):
         return self.cell_width - len(entry)
 
+    # We are going to draw the board here and we need the player's highest rank (if above low pair) which will be highlighted.
+    def draw_to_scr(self, hand_rank):
+        for i, line in enumerate(self.board_skeleton.split("\n")):
+            if hand_rank and hand_rank in line:
+                for j, c in enumerate(line):
+                    if c != self.symbols["vbar"]:
+                        self.scr.addstr(i, j, c, curses.A_REVERSE)
+                    else:
+                        self.scr.addstr(i, j, c, curses.A_DIM)
+            else:
+                self.scr.addstr(i, 0, line, curses.A_DIM)
+
+
 if __name__ == "__main__":
-    sb = ScoreBoard([15,12], None)
-    print(sb.get_scoreboard_sceleton())
+    stdscr = curses.initscr()
+    curses.noecho()
+    curses.cbreak()
+    stdscr.refresh()
+    sb = ScoreBoard([15,12], stdscr)
+    sb.draw_to_scr("jacks or better")
+    while True:
+        c = stdscr.getch()
+        if c == ord('q'):
+            break
