@@ -15,6 +15,8 @@ suites = ["clubs", "diamonds", "hearts", "spades"]
 card_names = ["Ace", "2", "3", "4", "5", "6", "7", "8", "9", "10", "Jack", "Queen", "King"]
 dims = [15, 12]
 
+
+
 '''
     will lose:
     high (guaranteed):  returns the highest card               
@@ -112,7 +114,8 @@ def print_hand(hand, scr):
 
 
 # TODO change name, shadows additional class
-def draw_cards(n):
+# Take in existing cards so there's no collision (there can only be 1 card of same value&suite)
+def draw_cards(n, existing_cards):
     cards = []
     if False:  #DEBUG
         return [[1, "diamonds"], [3, "clubs"], [6, "diamonds"], [4, "diamonds"], [5, "diamonds"]]
@@ -122,7 +125,8 @@ def draw_cards(n):
     while i < n:
         suite = suites[randrange(3)]
         value = randrange(1, 14)
-        if value in cards:
+        # Checks for collision between cards that are drawn now or were part of player's entire hand (including the cards that will be discarded)
+        if [value, suite] in cards or (existing_cards and [value, suite] in existing_cards):
             continue
         cards.append([value, suite])
         i += 1
@@ -149,8 +153,18 @@ def shuffle(hand, scr):
             random_hand.append([randrange(14), suites[randrange(4)]])
         print_hand(random_hand, scr)
         time.sleep(0.2)
-        print_hand(None, stdscr)
-        time.sleep(0.2)
+        print_hand(None, scr)
+        if i != 3:
+            time.sleep(0.2)
+    
+    tmp_hand = [[0,0], [0,0], [0,0], [0,0], [0,0]]
+    for i in range(5):
+        tmp_hand[i] = hand[i]
+        if i == 4:
+            time.sleep(0.85)
+        else:
+            time.sleep(0.35)
+        print_hand(tmp_hand, stdscr)
     print_hand(hand, scr)
             
 
@@ -158,7 +172,7 @@ def shuffle(hand, scr):
 def main():
     print_hand(None, stdscr)
     c = stdscr.getch()
-    cards = draw_cards(5)
+    cards = draw_cards(5, None)
     shuffle(cards, stdscr)
     print_hand(cards, stdscr)
     ranked = rank_hand(cards)
@@ -203,7 +217,7 @@ def main():
         # Space bar is "Deal"
         if c == ord(' '):
             tmp_hand = []
-            drawn_cards = draw_cards(5 - len(held))
+            drawn_cards = draw_cards(5 - len(held), cards)
             for i in range(len(cards)):
                 if i not in held:
                     tmp_hand.append([0,0])
@@ -219,10 +233,10 @@ def main():
                     for j in range(2):
                         tmp_hand[i] = [randrange(14), suites[randrange(4)]]
                         print_hand(tmp_hand, stdscr)
-                        time.sleep(0.2)
+                        time.sleep(0.1)
                         tmp_hand[i] = [0,0]
                         print_hand(tmp_hand, stdscr)
-                        time.sleep(0.2)
+                        time.sleep(0.1)
                     tmp_hand[i] = cards[i]
                     print_hand(tmp_hand, stdscr)
                     time.sleep(0.2)
@@ -244,7 +258,7 @@ def main():
             
             c = stdscr.getch()
             if c == ord(' '):
-                cards = draw_cards(5)
+                cards = draw_cards(5, cards)
                 print_hand(cards, stdscr)
                 ranked = rank_hand(cards)
                 stdscr.addstr(dims[0], 0, " "*100, curses.A_REVERSE)
@@ -255,6 +269,8 @@ def main():
 
         if c == ord('q'):
             break
+        if c == ord('-'):
+            import pdb; pdb.set_trace()
 
 if __name__ == "__main__":
     main()
