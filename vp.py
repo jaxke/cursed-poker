@@ -31,8 +31,32 @@ import time
     hand: [[1, 'diamonds'], [1, 'spades'], [3, 'clubs'], [4, 'hearts'], [4, 'diamonds']]
 '''
 
-class Main:
+class Deck:
     suites = ["clubs", "diamonds", "hearts", "spades"]
+    dealt_cards = []
+
+    def __init__(self):
+        self.dealt_cards = []
+
+    # shuffle parameter defines if there is a need to check for collisions, it's just for the animations anyway
+    def deal_card(self, shuffle=False):
+        card = [0, 0]
+        while card == [0, 0] or (not shuffle and card in self.dealt_cards):
+            value = randrange(1,14)
+            suite = self.suites[randrange(3)]
+            card = [value, suite]
+        if not shuffle:
+            self.dealt_cards.append(card)
+        return card
+
+    def deal_cards(self, n):
+        drawn_cards = []
+        for i in range(n):
+            drawn_cards.append(self.deal_card())
+        return drawn_cards
+
+
+class Main:
     card_names = ["Ace", "2", "3", "4", "5", "6", "7", "8", "9", "10", "Jack", "Queen", "King"]
     dims = [15, 12]
     scr = None
@@ -81,7 +105,7 @@ class Main:
                     hand_ranking[val] = "three of a kind"
                 elif occurences_of_val == 4:
                     hand_ranking[val] = "four of a kind"
-
+        # TODO SHADOWS self.suites
         suites = [card[1] for card in hand]
         if suites.count(suites[0]) == len(hand):
             hand_ranking = {high: "flush"}
@@ -124,27 +148,6 @@ class Main:
         self.scr.addstr(self.ylocation_cards, 0, hand_display, curses.A_REVERSE)
         self.scr.refresh()
 
-
-    # TODO change name, shadows additional class
-    # Take in existing cards so there's no collision (there can only be 1 card of same value&suite)
-    def draw_cards(self, n, existing_cards):
-        cards = []
-        if False:  #DEBUG
-            return [[11, "hearts"], [11, "clubs"], [11, "hearts"], [10, "hearts"], [10, "clubs"]]
-        
-        # Can't do it in for loop because we can't reset the loop without incrementing the iterator
-        i = 0
-        while i < n:
-            suite = self.suites[randrange(3)]
-            value = randrange(1, 14)
-            # Checks for collision between cards that are drawn now or were part of player's entire hand (including the cards that will be discarded)
-            if [value, suite] in cards or (existing_cards and [value, suite] in existing_cards):
-                continue
-            cards.append([value, suite])
-            i += 1
-        return cards
-
-
     def update_held(self, held):
         self.scr.addstr(self.ylocation_hold, 0, " "* 5*(self.dims[0]+4), curses.A_STANDOUT)
         holdstr = ""
@@ -158,21 +161,17 @@ class Main:
 
     def print_token_information(self):
         self.scr.addstr(self.location_bet[1], self.location_bet[0], "TOKENS: " + str(self.tokens), curses.A_BOLD)
-        
 
     def print_bet_information(self, bet):
         # TODO fix this space issue
         self.scr.addstr(self.location_tokens[1], self.location_tokens[0], "BET: " + str(bet) + " ", curses.A_BOLD)
         self.scr.refresh()
 
-
-    def shuffle(self, hand):
+    # "deck" parameter is not optimal, but we need the object here to get a random card; it could also be a class attribute... but I don't like that idea either...
+    def shuffle(self, hand, deck):
         # "Shuffle animation" 4 times
         for i in range(4):
-            random_hand = []
-            # 5 cards per hand
-            for j in range(5):
-                random_hand.append([randrange(14), self.suites[randrange(4)]])
+            random_hand = deck.deal_cards(5)
             self.print_hand(random_hand)
             time.sleep(0.2)
             self.print_hand(None)
@@ -221,18 +220,22 @@ class Main:
             c = self.scr.getch()
 
         while True:
+            # Abstractially this puts the cards on the table back to the imaginary deck
+            deck = Deck()
             self.tokens -= bet
             self.print_token_information()
-            cards = self.draw_cards(5, None)
+            cards = deck.deal_cards(5)
             ranked = self.rank_hand(cards)
             # Even if we've got the cards already, don't reveal the rank before cards are shuffled
             self.scoreboard.draw_to_scr(None)
             self.print_hand(None)
-            self.shuffle(cards)
+            self.shuffle(cards, deck)
             self.scoreboard.draw_to_scr(ranked)
             held = []
 
             c = self.scr.getch()
+            if c == ord('q'):
+                break
 
             while c >= 49 and c <= 53 or c in [97, 115, 100, 102, 103]:
                 if c == ord('1') or c == ord('a'):
@@ -264,7 +267,6 @@ class Main:
                         held.remove(4)
                     else:
                         held.append(4)
-
                 self.update_held(held)
                 c = self.scr.getch()
 
@@ -272,7 +274,7 @@ class Main:
             if c == ord(' '):
                 tmp_hand = []
                 # The cards that are re-dealt
-                drawn_cards = self.draw_cards(5 - len(held), cards)
+                drawn_cards = deck.deal_cards(5 - len(held))
                 for i in range(len(cards)):
                     if i not in held:
                         tmp_hand.append([0,0])
@@ -282,11 +284,10 @@ class Main:
                         tmp_hand.append(cards[i])
 
                 self.print_hand(tmp_hand)
-                self.scr.refresh()
                 for i in range(len(tmp_hand)):
                     if tmp_hand[i] == [0,0]:
                         for j in range(2):
-                            tmp_hand[i] = [randrange(14), self.suites[randrange(4)]]
+                            tmp_hand[i] = deck.deal_card(True)
                             self.print_hand(tmp_hand)
                             time.sleep(0.1)
                             tmp_hand[i] = [0,0]
