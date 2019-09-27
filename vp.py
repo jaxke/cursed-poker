@@ -68,7 +68,7 @@ class Main:
     location_bet = [0,0]
 
     scoreboard = None
-    tokens = 50
+    tokens = 5
     bet_tiers = [1, 5, 10]
 
     def __init__(self, stdscr):
@@ -211,7 +211,7 @@ class Main:
 
         # Wait for the user input before dealing
         c = self.scr.getch()
-        while c != ord(" "):
+        while c != ord(" ") or self.tokens - bet < 0:
             if c == ord('q'):
                 return
             elif c == ord('b'):
@@ -222,6 +222,11 @@ class Main:
         while True:
             # Abstractially this puts the cards on the table back to the imaginary deck
             deck = Deck()
+            """ while self.tokens - bet < 0:
+                c = self.scr.getch()
+                if c == ord('b'):
+                    bet = self.increase_bet(bet) """
+
             self.tokens -= bet
             self.print_token_information()
             cards = deck.deal_cards(5)
@@ -316,7 +321,7 @@ class Main:
                     self.print_token_information()
 
                 c = self.scr.getch()
-                while c != ord(' '):
+                while c != ord(' ') or self.tokens - bet < 0:
                     if c == ord('b'):
                         bet = self.increase_bet(bet)
                     elif c == ord('q'):
