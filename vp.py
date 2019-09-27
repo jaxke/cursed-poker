@@ -36,18 +36,25 @@ class Main:
     card_names = ["Ace", "2", "3", "4", "5", "6", "7", "8", "9", "10", "Jack", "Queen", "King"]
     dims = [15, 12]
     scr = None
+
     ylocation_scoreboard = 0
     ylocation_cards = 0
     ylocation_hold = 0
+    location_tokens = [0,0]
+    location_bet = [0,0]
+
     scoreboard = None
+    tokens = 50
+    bet_tiers = [1, 5, 10]
 
     def __init__(self, stdscr):
         self.scr = stdscr
         self.scoreboard = ScoreBoard.ScoreBoard(self.dims, self.scr)
         self.ylocation_cards = self.scoreboard.get_scoreboard_height() + 1
         self.ylocation_hold = self.ylocation_cards + self.dims[1]
+        self.location_tokens = [0, self.ylocation_hold + 1]
+        self.location_bet = [self.dims[0] - 3, self.ylocation_hold + 1]
         self.main()
-        pass
 
     def rank_hand(self, hand):
         high = 0
@@ -93,7 +100,6 @@ class Main:
             return "three of a kind"
 
         for i in range(1, len(vals)):
-            #import pdb; pdb.set_trace()
             if not vals[i]-1 == vals[i-1]:
                 break
             if i == len(vals)-1:
@@ -124,7 +130,7 @@ class Main:
     def draw_cards(self, n, existing_cards):
         cards = []
         if False:  #DEBUG
-            return [[1, "diamonds"], [3, "clubs"], [6, "diamonds"], [4, "diamonds"], [5, "diamonds"]]
+            return [[11, "hearts"], [11, "clubs"], [11, "hearts"], [10, "hearts"], [10, "clubs"]]
         
         # Can't do it in for loop because we can't reset the loop without incrementing the iterator
         i = 0
@@ -150,8 +156,16 @@ class Main:
         self.scr.addstr(self.ylocation_hold, 0, holdstr, curses.A_STANDOUT)
         self.scr.refresh()
 
+    def print_token_information(self):
+        self.scr.addstr(self.location_bet[1], self.location_bet[0], "TOKENS: " + str(self.tokens), curses.A_BOLD)
+        
 
-    # TODO This program NEEDS a main class to get rid of passing semi-irrelevant vars
+    def print_bet_information(self, bet):
+        # TODO fix this space issue
+        self.scr.addstr(self.location_tokens[1], self.location_tokens[0], "BET: " + str(bet) + " ", curses.A_BOLD)
+        self.scr.refresh()
+
+
     def shuffle(self, hand):
         # "Shuffle animation" 4 times
         for i in range(4):
@@ -174,31 +188,53 @@ class Main:
                 time.sleep(0.35)
             self.print_hand(tmp_hand)
         self.print_hand(hand)
+
+    def increase_bet(self, old_bet):
+        bet = 0
+        if old_bet == 1:
+            bet = 5
+        elif old_bet == 5:
+            bet = 10
+        else:
+            bet = 1
+        self.print_bet_information(bet)
+        return bet
                 
     # TODO add "deal" function to remove repetition, it should function in both re-deal and drawing new cards to hand
 
     def main(self):
-        
-        cards = self.draw_cards(5, None)
-        ranked = self.rank_hand(cards)
-        # Even if we've got the cards already, don't reveal the rank yet
+        bet = 1
         self.scoreboard.draw_to_scr(None)
         self.print_hand(None)
 
+        self.print_token_information()
+        self.print_bet_information(bet)
+
         # Wait for the user input before dealing
         c = self.scr.getch()
-        self.shuffle(cards)
-
-        self.scoreboard.draw_to_scr(ranked)
-        self.print_hand(cards)
-        """ stdscr.addstr(dims[0], 0, ranked, curses.A_REVERSE)
-        stdscr.refresh() """
-        held = []
-
-        c = self.scr.getch()
-        while True:
+        while c != ord(" "):
+            if c == ord('q'):
+                return
+            elif c == ord('b'):
+                bet = self.increase_bet(bet)
+            
             c = self.scr.getch()
-            if c >= 49 and c <= 53 or c in [97, 115, 100, 102, 103]:
+
+        while True:
+            self.tokens -= bet
+            self.print_token_information()
+            cards = self.draw_cards(5, None)
+            ranked = self.rank_hand(cards)
+            # Even if we've got the cards already, don't reveal the rank before cards are shuffled
+            self.scoreboard.draw_to_scr(None)
+            self.print_hand(None)
+            self.shuffle(cards)
+            self.scoreboard.draw_to_scr(ranked)
+            held = []
+
+            c = self.scr.getch()
+
+            while c >= 49 and c <= 53 or c in [97, 115, 100, 102, 103]:
                 if c == ord('1') or c == ord('a'):
                     if 0 in held:
                         held.remove(0)
@@ -230,10 +266,12 @@ class Main:
                         held.append(4)
 
                 self.update_held(held)
+                c = self.scr.getch()
 
             # Space bar is "Deal"
             if c == ord(' '):
                 tmp_hand = []
+                # The cards that are re-dealt
                 drawn_cards = self.draw_cards(5 - len(held), cards)
                 for i in range(len(cards)):
                     if i not in held:
@@ -262,33 +300,29 @@ class Main:
                 self.print_hand(cards)
                 ranked = self.rank_hand(cards)
                 self.scoreboard.draw_to_scr(ranked)
-                self.scr.move(2, 0)
-                self.scr.refresh()
+                held = []
                 self.update_held(None)
 
-                """
+                # Lower than "jacks or better" is a loss, credits are already deduced.
                 if ranked == "low pair" or "high" in ranked:
-                        self.scr.addstr(self.dims[0], 0, "You've lost", curses.A_REVERSE)
-                    elif ranked == "jacks or better":
-                        self.scr.addstr(self.dims[0], 0, "You've got a pair of jacks or better. Draw.", curses.A_REVERSE)
-                    else:
-                        self.scr.addstr(self.dims[0], 0, "You've got: " + ranked + ". You win.", curses.A_REVERSE) """
-                
-                c = self.scr.getch()
-                if c == ord(' '):
-                    cards = self.draw_cards(5, cards)
-                    self.scoreboard.draw_to_scr(None)
-                    
-                    self.print_hand(cards)
-                    ranked = self.rank_hand(cards)
-                    held = []
-                    self.shuffle(cards)
-                    self.scoreboard.draw_to_scr(ranked)
+                    pass
+                # Refund bet at draw
+                elif ranked == "jacks or better":
+                    self.tokens += bet
+                    self.print_token_information()
+                else:
+                    self.tokens += self.scoreboard.get_reward(bet, ranked)
+                    self.print_token_information()
 
-            if c == ord('q'):
-                break
-            if c == ord('-'):
-                import pdb; pdb.set_trace()
+                c = self.scr.getch()
+                while c != ord(' '):
+                    if c == ord('b'):
+                        bet = self.increase_bet(bet)
+                    elif c == ord('q'):
+                        return
+                    c = self.scr.getch()
+
+            
 
 if __name__ == "__main__":
     stdscr = curses.initscr()

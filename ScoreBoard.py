@@ -23,6 +23,9 @@ class ScoreBoard:
         self.board_width = (len(self.tiers)+1)*self.cell_width + 2 + len(self.tiers)-2
         self.board_skeleton = self.get_scoreboard_sceleton()
 
+    def get_reward(self, bet, rank):
+        return bet * self.scaling[self.winning_hands.index(rank)]
+
     def get_scoreboard_height(self):
         return 2 + len(self.winning_hands)
 
@@ -43,7 +46,13 @@ class ScoreBoard:
     # We are going to draw the board here and we need the player's highest rank (if above low pair) which will be highlighted.
     def draw_to_scr(self, hand_rank):
         for i, line in enumerate(self.board_skeleton.split("\n")):
-            if hand_rank and hand_rank in line:
+            if i == 0:
+                self.scr.addstr(i, 0, line, curses.A_DIM)
+            elif i == len(self.winning_hands)+1:
+                self.scr.addstr(i, 0, line, curses.A_DIM)
+                break
+            # Reversed winning_hands because the scoreboard is drawn "upside-down"
+            elif hand_rank and hand_rank == self.winning_hands[::-1][i-1]:
                 for j, c in enumerate(line):
                     if c != self.symbols["vbar"]:
                         self.scr.addstr(i, j, c, curses.A_REVERSE)
@@ -57,10 +66,11 @@ if __name__ == "__main__":
     stdscr = curses.initscr()
     curses.noecho()
     curses.cbreak()
-    stdscr.refresh()
     sb = ScoreBoard([15,12], stdscr)
-    sb.draw_to_scr("jacks or better")
+    a=sb.get_scoreboard_sceleton()
+    sb.draw_to_scr(None)
+    c = stdscr.getch()
+    if c == ord('q'):
+        import sys; sys.exit()
     while True:
-        c = stdscr.getch()
-        if c == ord('q'):
-            break
+        pass
